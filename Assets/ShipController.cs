@@ -14,6 +14,12 @@ public class ShipController : MonoBehaviour
     public bool WASD;
     GameObject bullet;
     GameObject scoreText;
+    public GameObject bomb;
+    float spawnTime = 3.0f;
+    private Vector2 screenBounds;
+    GameObject VIP;
+    public GameObject laser;
+    public GameObject explode;
 
     // Start is called before the first frame update
     void Start()
@@ -22,6 +28,18 @@ public class ShipController : MonoBehaviour
         gravitationalSpeed = 0.25f;
         bullet = transform.GetChild(0).gameObject;
         scoreText = GameObject.Find("Canvas/Score");
+
+        if(scoreText.GetComponent<ScoreTracker>().player2Score > 2)
+        {
+            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex + 1);
+        }
+
+        if (SceneManager.GetActiveScene().buildIndex == 2)
+        {
+            bomb = transform.GetChild(0).gameObject;
+            screenBounds = Camera.main.ScreenToWorldPoint(new Vector3(Screen.width, Screen.height, Camera.main.transform.position.z));
+            InvokeRepeating ("SpawnBomb", spawnTime, spawnTime);
+        }
     }
 
     // Update is called once per frame
@@ -76,7 +94,10 @@ public class ShipController : MonoBehaviour
     void FixedUpdate()
     {
         MoveShip(movement);
-        rb.AddForce((Vector2.zero - (Vector2)transform.position) * gravitationalSpeed);
+        if (SceneManager.GetActiveScene().buildIndex != 0)
+        {
+            rb.AddForce((Vector2.zero - (Vector2)transform.position) * gravitationalSpeed);
+        }
     }
 
     void MoveShip(Vector2 vel)
@@ -87,36 +108,93 @@ public class ShipController : MonoBehaviour
 
     void FireBullet()
     {
+        laser.GetComponent<AudioSource>().Play();
         GameObject temp = Instantiate(bullet, transform.position, transform.rotation);
         temp.GetComponent<Rigidbody2D>().isKinematic = false;
         temp.GetComponent<BulletController>().enabled = true;
     }
 
+    void SpawnBomb()
+    {
+        GameObject temp = Instantiate(bomb) as GameObject;
+        temp.transform.position = new Vector2(Random.Range(-screenBounds.x, screenBounds.x), Random.Range(-screenBounds.y, screenBounds.y));
+    }
+
+    // IEnumerator BombSet()
+    // {
+    //     while(true)
+    //     {
+    //         yield return new WaitForSeconds(spawnTime);
+    //         SpawnBomb();
+    //     }
+    // }
+
     void OnCollisionEnter2D(Collision2D col)
     {
         if(col.gameObject.name == "Star" && this.name == "Player1Ship")
         {
-            scoreText.GetComponent<ScoreTracker>().player2Score += 1;
-            SceneManager.LoadScene(0);
+            explode.GetComponent<AudioSource>().Play();
+            if((scoreText.GetComponent<ScoreTracker>().player2Score < 2) && (scoreText.GetComponent<ScoreTracker>().player1Score < 2))
+            {
+                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+                scoreText.GetComponent<ScoreTracker>().player2Score += 1;
+            }
+            else
+            {
+                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex + 1);
+                scoreText.GetComponent<ScoreTracker>().player2Score = 0;
+                scoreText.GetComponent<ScoreTracker>().player1Score = 0;
+            }
         }
         else if(col.gameObject.name == "Star" && this.name == "Player2Ship")
         {
-            scoreText.GetComponent<ScoreTracker>().player1Score += 1;
-            SceneManager.LoadScene(0);
+            explode.GetComponent<AudioSource>().Play();
+            if((scoreText.GetComponent<ScoreTracker>().player2Score < 2) && (scoreText.GetComponent<ScoreTracker>().player1Score < 2))
+            {
+                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+                scoreText.GetComponent<ScoreTracker>().player1Score += 1;
+            }
+            else
+            {
+                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex + 1);
+                scoreText.GetComponent<ScoreTracker>().player2Score = 0;
+                scoreText.GetComponent<ScoreTracker>().player1Score = 0;
+            }
         }
     }
 
     void OnTriggerEnter2D(Collider2D col)
     {
-        if(col.gameObject.name == "Player2Bullet(Clone)" && this.name == "Player1Ship")
+        if (SceneManager.GetActiveScene().buildIndex != 1)
         {
-            scoreText.GetComponent<ScoreTracker>().player2Score += 1;
-            SceneManager.LoadScene(0);
-        }
-        else if(col.gameObject.name == "Player1Bullet(Clone)" && this.name == "Player2Ship")
-        {
-            scoreText.GetComponent<ScoreTracker>().player1Score += 1;
-            SceneManager.LoadScene(0);
+            if(col.gameObject.name == "Player2Bullet(Clone)" && (this.name == "Player1Ship" || col.gameObject.name == "Player1VIP"))
+            {
+                if((scoreText.GetComponent<ScoreTracker>().player2Score < 2) && (scoreText.GetComponent<ScoreTracker>().player1Score < 2))
+                {
+                    SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+                    scoreText.GetComponent<ScoreTracker>().player2Score += 1;
+                }
+                else
+                {
+                    SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex + 1);
+                    scoreText.GetComponent<ScoreTracker>().player2Score = 0;
+                    scoreText.GetComponent<ScoreTracker>().player1Score = 0;
+                }
+            }
+            else if(col.gameObject.name == "Player1Bullet(Clone)" && (this.name == "Player2Ship" || col.gameObject.name == "Player2VIP"))
+            {
+                if((scoreText.GetComponent<ScoreTracker>().player2Score < 2) && (scoreText.GetComponent<ScoreTracker>().player1Score < 2))
+                {
+                    SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+                    scoreText.GetComponent<ScoreTracker>().player1Score += 1;
+                }
+                else
+                {
+                    SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex + 1);
+                    scoreText.GetComponent<ScoreTracker>().player2Score = 0;
+                    scoreText.GetComponent<ScoreTracker>().player1Score = 0;
+                }
+            }
         }
     }
 }
